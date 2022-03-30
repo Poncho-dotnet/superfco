@@ -1,7 +1,7 @@
 """ superfco game
-Classic pascal game from de 90s, refactored to modern style python
+Classic pascal game from the 90s, refactored to modern style python
 * full ascii art graphics
-* full out blown 80x40 120fps resolution
+* full blown out 80x40 120fps resolution
 
 Controls
 --------
@@ -25,21 +25,19 @@ import terrainutils
 # game constants
 PLAYER_IMG = 'player.png'
 WALL_IMG = 'wall.png'
+GOAL_IMG = 'goal.png'
 CANNONBALL_IMG = 'cannonball.png'
+CURRENT_PATH = os.getcwd()
+LEVEL_FILENAME = 'ETAPA{:02d}.PAS'
 SCREENRECT = pygame.Rect(0, 0, 800, 600)
 FRAMERATE = 60
 
 COLUMNS = 80
 ROWS = 22
 
-
-# initialization
-currentpath = os.getcwd()
-level_file = 'ETAPA01.PAS'
-
 # loads an image, prepares it for play
 def load_image(file):
-    file = os.path.join(currentpath, file)
+    file = os.path.join(CURRENT_PATH, file)
 
     try:
         surface = pygame.image.load(file)
@@ -47,9 +45,13 @@ def load_image(file):
         raise SystemExit('Could not load image "%s" %s' % (file, pygame.get_error()))
     return surface.convert()
 
-# representado por un caracter ascii
+# ======================================================
+#                     Game classes
+# ======================================================
+
+# represented by ascii character x01
 class Player(pygame.sprite.Sprite):
-    hmaxspeed = 10 # 10 espacios por segundo
+    hmaxspeed = 10 # 10 tiles per second
     vmaxspeed = 2
     v_acceleration = 0.02
     v_jump = -8
@@ -109,6 +111,15 @@ class Wall(pygame.sprite.Sprite):
         self.posx = posx
         self.posy = posy
 
+class Goal(pygame.sprite.Sprite):
+    def __init__(self, posx, posy):
+        pygame.sprite.Sprite.__init__(self, self.containers)
+        self.image = self.images[0]
+        self.rect = self.image.get_rect()
+        self.rect.x = posx * SCREENRECT.width / COLUMNS
+        self.rect.y = posy * SCREENRECT.height / ROWS
+        self.posx = posx
+        self.posy = posy
 
 class Text(pygame.sprite.Sprite):
     def __init__(self, text, size, color, width, height):
@@ -128,61 +139,39 @@ class Text(pygame.sprite.Sprite):
         self.image = pygame.Surface((self.width, self.height))
         self.image.blit(self.surface, [0, 0])
 
-
 # ======================================================
-#                         Main
+#                      Level play
 # ======================================================
 
-def main():
-    # init screen
-    pygame.init()
-    pygame.font.init()
-    fullscreen = False
-    winstyle = 0 | pygame.DOUBLEBUF  # |FULLSCREEN
-    bestdepth = pygame.display.mode_ok(SCREENRECT.size, winstyle, 32)
-    screen = pygame.display.set_mode(SCREENRECT.size, winstyle, bestdepth)
-    pygame.display.set_caption("superfco")
-
-    # Load images, assign to sprite classes
-    # (do this before the classes are used, after screen setup)
-    wall_img = load_image(WALL_IMG)
-    wall_img = pygame.transform.scale(wall_img, (SCREENRECT.width/80, SCREENRECT.height / 22))
-    wall_img.set_colorkey((0,0,0))
-    Wall.images = [wall_img]
-
-    player_img = load_image(PLAYER_IMG)
-    player_img = pygame.transform.scale(player_img, (SCREENRECT.width/80, SCREENRECT.height / 22))
-    player_img.set_colorkey((0,0,0))
-    Player.images = [player_img]
-
-    # create the background, tile the bgd image
+def play_level(screen, currentlvl):
+    # create the background
     background = pygame.Surface(SCREENRECT.size)
     background.fill(color = (0, 0, 0))
     screen.blit(background, (0, 0))    
-    #pygame.display.flip()
 
     # Initialize Game Groups
     walls = pygame.sprite.Group()
     cannons = pygame.sprite.Group()
-    mensajes = pygame.sprite.Group()
+    goals = pygame.sprite.Group()
+    messages = pygame.sprite.Group()
     todos = pygame.sprite.RenderUpdates()
 
     # assign default groups to each sprite class
     Player.containers = todos
     Wall.containers = walls, todos
-    Text.containers = mensajes, todos
+    Text.containers = messages, todos
+    Goal.containers = goals, todos
 
     # initialize our starting sprites
-    structure = lvlutils.get_level_structure(currentpath, level_file)
-    player = lvlutils.draw_level(structure, Player, Wall)
+    structure = lvlutils.get_level_structure(CURRENT_PATH, LEVEL_FILENAME.format(currentlvl))
+    player = lvlutils.draw_level(structure, Player, Wall, Goal)
 
     # debug text
-    debugtext = Text("Inicializando", 10, (200,200,200), 300, 50)
+    debugtext = Text("Starting...", 10, (200,200,200), 500, 50)
 
-    # starting vars
+    # setup clock
     clock = pygame.time.Clock()
     ticks = 0
-    #pygame.key.set_repeat(1000)    
 
     while True:
         # update all the sprites
@@ -191,17 +180,14 @@ def main():
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                return
-
-            # if event.type == pygame.KEYDOWN:
-            #     if event.key == pygame.K_KP4:
-            #         player.move(-1)
-            #     elif event.key == pygame.K_KP6:
-            #         player.move(1)
+                return "quit"
 
         # update movement
         keys = pygame.key.get_pressed()
         
+        if keys[pygame.K_ESCAPE]:
+            return "quit"
+
         # calculamos espacio de maniobra
         paredescercanas = terrainutils.get_paredes_cercanas(structure, player)
         tienesustento = terrainutils.tiene_sustento(paredescercanas, player)
@@ -217,11 +203,11 @@ def main():
             player.move_lat(-1, ticks)
         
         if keys[pygame.K_KP8]:
-            if paredescercanas.derecha == player.posx or paredescercanas.izquierda == player.posx:
-                player.move_vert(-1, ticks)
-            elif paredescercanas.abajo == player.posy:
+            if paredescercanas.abajo == player.posy:
                 player.jump(ticks)
-                player.hspeed = 0                
+                player.hspeed = 0   
+            elif tienesustento:
+                player.move_vert(-1, ticks)             
         if keys[pygame.K_KP2] and tienesustento:
             player.move_vert(1, ticks)
 
@@ -240,18 +226,70 @@ def main():
             player.fall(ticks)
 
         # update
-        player.updatepos(paredescercanas)
+        player.updatepos(paredescercanas)        
 
         # display debug info
-        debugtext.set_text(f'x: {player.posx:.2f}, y: {player.posy:.2f}, air? {isfloating}, paredes: {paredescercanas}')
-        
+        debugtext.set_text(f'x: {player.posx:.2f}, y: {player.posy:.2f}, air? {isfloating}, paredes: {paredescercanas}')            
+
         # draw the scene
         dirty = todos.draw(screen)
         pygame.display.update(dirty)
         pygame.event.pump()
 
+        # detect end of level
+        for goal in pygame.sprite.spritecollide(player, goals, 0):
+            return "goal"
+
         # cap the framerate
         ticks = clock.tick(FRAMERATE)
+
+# ======================================================
+#                         Main
+# ======================================================
+
+def main():
+    # init screen
+    pygame.init()
+    pygame.font.init()
+    winstyle = 0 | pygame.DOUBLEBUF  # |FULLSCREEN
+    bestdepth = pygame.display.mode_ok(SCREENRECT.size, winstyle, 32)    
+    screen = pygame.display.set_mode(SCREENRECT.size, winstyle, bestdepth)
+    pygame.display.set_caption("superfco")
+
+    # Load images, assign to sprite classes
+    # (do this before the classes are used, after screen setup)
+    wall_img = load_image(WALL_IMG)
+    wall_img = pygame.transform.scale(wall_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
+    wall_img.set_colorkey((0,0,0))
+    Wall.images = [wall_img]
+
+    goal_img = load_image(GOAL_IMG)
+    goal_img = pygame.transform.scale(goal_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
+    goal_img.set_colorkey((0,0,0))
+    Goal.images = [goal_img]
+
+    player_img = load_image(PLAYER_IMG)
+    player_img = pygame.transform.scale(player_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
+    player_img.set_colorkey((0,0,0))
+    Player.images = [player_img]
+
+    # global vars
+    currentlvl = 3
+    
+    # starto!
+    while True:
+        screen.fill( color = (0,0,0))
+        pygame.display.update()
+
+        result = play_level(screen, currentlvl)
+
+        if (result == "goal"):
+            currentlvl += 1
+        if (result == "quit"):
+            return
+
+
+    
         
         
 # call the "main" function if running this script

@@ -7,9 +7,10 @@ class Coordenadas:
         self.derecha = derecha
         self.izquierda = izquierda
         self.esesquina = False
+        self.esbordemapa = False
 
     def __str__(self):
-        return f'{self.derecha},{self.izquierda},{self.abajo},{self.arriba},{self.esesquina}'
+        return f'd={self.derecha},i={self.izquierda},ab={self.abajo},ar={self.arriba},esq={self.esesquina},borde={self.esbordemapa}'
 
 
 def get_paredes_cercanas(level_structure, player):
@@ -19,6 +20,7 @@ def get_paredes_cercanas(level_structure, player):
     
     # inicializamos con condiciones de borde
     result = Coordenadas(abajo=rows-1, arriba=0, derecha=cols-1, izquierda=0)
+    result.esbordemapa = True if playerx == result.izquierda or playerx == result.derecha else False
     
     for wally, row in enumerate(level_structure):
         for wallx, col in enumerate(row):
@@ -35,7 +37,7 @@ def get_paredes_cercanas(level_structure, player):
                     if wally - 1 < result.abajo:
                         result.abajo = wally - 1
                 if wally+1 <= playery and abs(playerx - wallx) < 1:
-                    if wally + 1 < result.arriba:
+                    if wally + 1 > result.arriba:
                         result.arriba = wally + 1
 
     # revisamos si el player está justo al lado de una cornisa
@@ -58,7 +60,7 @@ def is_floating(paredes: Coordenadas, player):
     if paredes.esesquina:
         return False
 
-    if playery < paredes.abajo and playery > paredes.arriba:
+    if playery < paredes.abajo and playery >= paredes.arriba:
         return True
     else:
         return False
@@ -66,12 +68,14 @@ def is_floating(paredes: Coordenadas, player):
 def tiene_sustento(paredes: Coordenadas, player):
     playerx, playery = player.posx, player.posy
 
+    if playery == paredes.abajo:
+        return True
+    elif paredes.esbordemapa:
+        return False
+
     if playerx == paredes.derecha:
         return True
     if playerx == paredes.izquierda: 
-        return True
-
-    if playery == paredes.abajo:
         return True
 
     return False
@@ -83,6 +87,5 @@ def tiene_piso(paredes: Coordenadas, player):
         return True
     if playery == paredes.abajo:
         return True
-
 
     return False

@@ -25,12 +25,14 @@ def get_level_row_structure(line: str) -> str:
     return [int(char) for char in line]
 
 
-def draw_level(level_structure, playerclass, wallclass):    
+def draw_level(level_structure, playerclass, wallclass, goalclass):    
     for idxrow, row in enumerate(level_structure):
         for idxcol, col in enumerate(row):
             if col == 2:
                 wallclass(idxcol, idxrow)
             if col == 3:
                 player = playerclass(idxcol, idxrow)
+            if col == 4:
+                goalclass(idxcol, idxrow)
 
     return player 
