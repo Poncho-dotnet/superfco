@@ -18,8 +18,11 @@ class BaseEntity(pygame.sprite.Sprite):
         self.cols = cols
         self.rows = rows
 
-        self.rect.x = self.posx * screen.width / cols
-        self.rect.y = self.posy * screen.height / rows
+        BaseEntity.update_rect(self)
+
+    def update_rect(self):
+        self.rect.x = self.posx * self.screenrect.width / self.cols
+        self.rect.y = self.posy * self.screenrect.height / self.rows
 
 # represented by ascii character x01
 class Player(BaseEntity):
@@ -63,8 +66,11 @@ class Player(BaseEntity):
 
         # death by drowning
         if not self.has_oxygen:
-            self.is_dead = True
-            self.image = self.images[1]
+            self.die()
+
+    def die(self):
+        self.is_dead = True
+        self.image = self.images[1]
 
     def updatepos(self, collision):
         if self.posx < collision.izquierda:
@@ -89,14 +95,44 @@ class Player(BaseEntity):
         if self.posy > collision.abajo:
             # death by falling too fast
             if self.vspeed > -self.v_jump * 2:
-                self.is_dead = True
-                self.image = self.images[1]
+                self.die()
 
             self.posy = collision.abajo
             self.vspeed = 0
 
-        self.rect.x = self.posx * self.screenrect.width / self.cols
-        self.rect.y = self.posy * self.screenrect.height / self.rows
+        # important!
+        self.update_rect()
+
+class Cannon(BaseEntity):
+    maxbullets = 2
+    firedelay = 3000
+
+    def __init__(self, posx, posy, screen, cols, rows):
+        BaseEntity.__init__(self, posx, posy, screen, cols, rows)
+
+        self.bullets = []
+        self.lastfire = 0
+
+        # first bullet
+        self.fire(self.firedelay)
+
+    def fire(self, ticks):
+        self.lastfire += ticks
+        numbullets = len(self.bullets)
+
+        if numbullets < self.maxbullets and self.lastfire > self.firedelay:
+            self.bullets.append(CannonBall(self.posx, self.posy, self.screenrect, self.cols, self.rows))
+            self.lastfire = 0
+
+class CannonBall(BaseEntity):
+    speed = -8
+
+    def __init__(self, posx, posy, screen, cols, rows):
+        BaseEntity.__init__(self, posx, posy, screen, cols, rows)
+
+    def move(self, ticks):
+        self.posx += self.speed * ticks / 1000
+        self.update_rect()
 
 class Wall(BaseEntity):
     def __init__(self, posx, posy, screen, cols, rows):

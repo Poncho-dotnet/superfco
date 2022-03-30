@@ -21,7 +21,7 @@ import pygame
 import os
 import terrainutils
 from terrainutils import EnumEntities
-from entities import Player, Wall, Water, Goal, OxygenTank, Text
+from entities import Player, Wall, Water, Goal, OxygenTank, Text, Cannon, CannonBall
 
 # game constants
 PLAYER_IMG = 'player.png'
@@ -29,6 +29,7 @@ WALL_IMG = 'wall.png'
 WATER_IMG = 'water.png'
 GOAL_IMG = 'goal.png'
 OXYGENTANK_IMG = 'oxygentank.png'
+CANNON_IMG = 'cannon.png'
 CANNONBALL_IMG = 'cannonball.png'
 IMAGES_FOLDER = 'images'
 CURRENT_PATH = os.getcwd()
@@ -68,6 +69,8 @@ def draw_level(structure):
                 Water(idxcol, idxrow, SCREENRECT, COLUMNS, ROWS)
             if col == EnumEntities.OXYGEN:
                 OxygenTank(idxcol, idxrow, SCREENRECT, COLUMNS, ROWS)
+            if col == EnumEntities.CANNON:
+                Cannon(idxcol, idxrow, SCREENRECT, COLUMNS, ROWS)
 
     return player 
 
@@ -82,6 +85,8 @@ def play_level(screen, currentlvl, lives):
     walls = pygame.sprite.Group()
     water = pygame.sprite.Group()
     oxygen = pygame.sprite.Group()
+    cannons = pygame.sprite.Group()
+    cannonballs = pygame.sprite.Group()
     goals = pygame.sprite.Group()
     messages = pygame.sprite.Group()
     todos = pygame.sprite.RenderUpdates()
@@ -91,6 +96,8 @@ def play_level(screen, currentlvl, lives):
     Wall.containers = walls, todos
     Water.containers = water, todos
     OxygenTank.containers = oxygen, todos
+    Cannon.containers = cannons, todos
+    CannonBall.containers = cannonballs, todos
     Goal.containers = goals, todos
     Text.containers = messages, todos
 
@@ -172,6 +179,20 @@ def play_level(screen, currentlvl, lives):
         # update
         player.updatepos(paredescercanas)        
 
+        # cannons
+        for cannon in cannons:
+            cannon.fire(ticks)
+            
+            for cannonball in cannon.bullets:
+                cannonball.move(ticks)
+
+                if pygame.sprite.spritecollide(cannonball, walls, 0):
+                    cannonball.kill()
+                    cannon.bullets.remove(cannonball)
+        
+        if pygame.sprite.spritecollide(player, cannonballs, 0):
+            player.die()
+
         # display debug info
         debugtext.set_text(f'x: {player.posx:.2f}, y: {player.posy:.2f}, air? {isfloating}, paredes: {paredescercanas}')            
 
@@ -222,6 +243,16 @@ def main():
     oxygen_img.set_colorkey((0,0,0))
     OxygenTank.images = [oxygen_img]
 
+    cannon_img = load_image(CANNON_IMG)
+    cannon_img = pygame.transform.scale(cannon_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
+    cannon_img.set_colorkey((0,0,0))
+    Cannon.images = [cannon_img]
+
+    cannonball_img = load_image(CANNONBALL_IMG)
+    cannonball_img = pygame.transform.scale(cannonball_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
+    cannonball_img.set_colorkey((0,0,0))
+    CannonBall.images = [cannonball_img]
+
     goal_img = load_image(GOAL_IMG)
     goal_img = pygame.transform.scale(goal_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
     goal_img.set_colorkey((0,0,0))
@@ -233,7 +264,7 @@ def main():
     Player.images = [player_img, pygame.transform.scale(player_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS / 2))]
 
     # global vars
-    currentlvl = 4
+    currentlvl = 6
     lives = 5
     
     # starto!
