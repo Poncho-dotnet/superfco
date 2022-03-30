@@ -18,13 +18,14 @@ Controls
 
 # import modules
 import pygame
-import lvlutils
 import os
 import terrainutils
+import entities
 
 # game constants
 PLAYER_IMG = 'player.png'
 WALL_IMG = 'wall.png'
+WATER_IMG = 'water.png'
 GOAL_IMG = 'goal.png'
 CANNONBALL_IMG = 'cannonball.png'
 CURRENT_PATH = os.getcwd()
@@ -45,103 +46,25 @@ def load_image(file):
         raise SystemExit('Could not load image "%s" %s' % (file, pygame.get_error()))
     return surface.convert()
 
-# ======================================================
-#                     Game classes
-# ======================================================
-
-# represented by ascii character x01
-class Player(pygame.sprite.Sprite):
-    hmaxspeed = 10 # 10 tiles per second
-    vmaxspeed = 2
-    v_acceleration = 0.02
-    v_jump = -8
-    
-    def __init__(self, posx, posy):
-        pygame.sprite.Sprite.__init__(self, self.containers)
-        self.image = self.images[0]
-        self.rect = self.image.get_rect()
-        
-        self.posx = posx
-        self.posy = posy
-        self.vspeed = 0.0
-        self.hspeed = 0
-        
-        self.rect.x = self.posx * SCREENRECT.width / COLUMNS
-        self.rect.y = self.posy * SCREENRECT.height / ROWS
-
-    def move_lat(self, direction, ticks):
-        self.posx += direction * self.hmaxspeed * ticks / 1000
-
-    def move_vert(self, direction, ticks):
-        self.posy += direction * self.vmaxspeed * ticks / 1000
-        
-    def jump(self, ticks):  
-        self.vspeed = self.v_jump
-        self.posy += self.vspeed * ticks / 1000
-
-    def fall(self, ticks):
-        self.vspeed += ticks * self.v_acceleration
-        self.posy += self.vspeed * ticks / 1000
-        self.posx += self.hspeed * ticks / 1000
-
-    def updatepos(self, borde):
-        if (self.posx < borde.izquierda):
-            self.posx = borde.izquierda
-            self.hspeed = 0
-        if (self.posx > borde.derecha):
-            self.posx = borde.derecha
-            self.hspeed = 0
-        if (self.posy < borde.arriba):
-            self.posy = borde.arriba
-            self.vspeed = 0
-        if (self.posy > borde.abajo):
-            self.posy = borde.abajo
-            self.vspeed = 0
-
-        self.rect.x = self.posx * SCREENRECT.width / COLUMNS
-        self.rect.y = self.posy * SCREENRECT.height / ROWS
-
-class Wall(pygame.sprite.Sprite):
-    def __init__(self, posx, posy):
-        pygame.sprite.Sprite.__init__(self, self.containers)
-        self.image = self.images[0]
-        self.rect = self.image.get_rect()
-        self.rect.x = posx * SCREENRECT.width / COLUMNS
-        self.rect.y = posy * SCREENRECT.height / ROWS
-        self.posx = posx
-        self.posy = posy
-
-class Goal(pygame.sprite.Sprite):
-    def __init__(self, posx, posy):
-        pygame.sprite.Sprite.__init__(self, self.containers)
-        self.image = self.images[0]
-        self.rect = self.image.get_rect()
-        self.rect.x = posx * SCREENRECT.width / COLUMNS
-        self.rect.y = posy * SCREENRECT.height / ROWS
-        self.posx = posx
-        self.posy = posy
-
-class Text(pygame.sprite.Sprite):
-    def __init__(self, text, size, color, width, height):
-        pygame.sprite.Sprite.__init__(self, self.containers)
-        self.color = color
-        self.width = width
-        self.height = height
-
-        self.font = pygame.font.SysFont("Comic Sans MS", size)
-        self.surface = self.font.render(text, 1, self.color)
-        self.image = pygame.Surface((self.width, self.height))
-        self.image.blit(self.surface, [0, 0])
-        self.rect = self.image.get_rect()
-    
-    def set_text(self, text):
-        self.surface = self.font.render(text, 1, self.color)
-        self.image = pygame.Surface((self.width, self.height))
-        self.image.blit(self.surface, [0, 0])
 
 # ======================================================
 #                      Level play
 # ======================================================
+
+def draw_level(structure):
+    for idxrow, row in enumerate(structure):
+        for idxcol, col in enumerate(row):
+            if col == 2:
+                entities.Wall(idxcol, idxrow, SCREENRECT, COLUMNS, ROWS)
+            if col == 3:
+                player = entities.Player(idxcol, idxrow, SCREENRECT, COLUMNS, ROWS)
+            if col == 4:
+                entities.Goal(idxcol, idxrow, SCREENRECT, COLUMNS, ROWS)
+            if col == 6:
+                entities.Water(idxcol, idxrow, SCREENRECT, COLUMNS, ROWS)
+
+    return player 
+
 
 def play_level(screen, currentlvl):
     # create the background
@@ -151,23 +74,25 @@ def play_level(screen, currentlvl):
 
     # Initialize Game Groups
     walls = pygame.sprite.Group()
+    water = pygame.sprite.Group()
     cannons = pygame.sprite.Group()
     goals = pygame.sprite.Group()
     messages = pygame.sprite.Group()
     todos = pygame.sprite.RenderUpdates()
 
     # assign default groups to each sprite class
-    Player.containers = todos
-    Wall.containers = walls, todos
-    Text.containers = messages, todos
-    Goal.containers = goals, todos
+    entities.Player.containers = todos
+    entities.Wall.containers = walls, todos
+    entities.Water.containers = water, todos
+    entities.Text.containers = messages, todos
+    entities.Goal.containers = goals, todos
 
     # initialize our starting sprites
-    structure = lvlutils.get_level_structure(CURRENT_PATH, LEVEL_FILENAME.format(currentlvl))
-    player = lvlutils.draw_level(structure, Player, Wall, Goal)
+    structure = terrainutils.get_level_structure(CURRENT_PATH, LEVEL_FILENAME.format(currentlvl))
+    player = draw_level(structure)
 
     # debug text
-    debugtext = Text("Starting...", 10, (200,200,200), 500, 50)
+    debugtext = entities.Text("Starting...", 10, (200,200,200), 500, 50)
 
     # setup clock
     clock = pygame.time.Clock()
@@ -212,13 +137,9 @@ def play_level(screen, currentlvl):
             player.move_vert(1, ticks)
 
         if keys[pygame.K_KP9] and tienepiso and player.posx < paredescercanas.derecha:
-            player.jump(ticks)
-            player.move_lat(1, ticks)
-            player.hspeed = Player.hmaxspeed
+            player.jump_lat(1, ticks)
         if keys[pygame.K_KP7] and tienepiso and player.posx > paredescercanas.izquierda:
-            player.jump(ticks)
-            player.move_lat(-1, ticks)
-            player.hspeed = -Player.hmaxspeed
+            player.jump_lat(-1, ticks)
 
         # si está en el aire....
         isfloating = terrainutils.is_floating(paredescercanas, player)
@@ -261,17 +182,22 @@ def main():
     wall_img = load_image(WALL_IMG)
     wall_img = pygame.transform.scale(wall_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
     wall_img.set_colorkey((0,0,0))
-    Wall.images = [wall_img]
+    entities.Wall.images = [wall_img]
+
+    water_img = load_image(WATER_IMG)
+    water_img = pygame.transform.scale(water_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
+    water_img.set_colorkey((0,0,0))
+    entities.Water.images = [water_img]
 
     goal_img = load_image(GOAL_IMG)
     goal_img = pygame.transform.scale(goal_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
     goal_img.set_colorkey((0,0,0))
-    Goal.images = [goal_img]
+    entities.Goal.images = [goal_img]
 
     player_img = load_image(PLAYER_IMG)
     player_img = pygame.transform.scale(player_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
     player_img.set_colorkey((0,0,0))
-    Player.images = [player_img]
+    entities.Player.images = [player_img]
 
     # global vars
     currentlvl = 3
@@ -289,9 +215,6 @@ def main():
             return
 
 
-    
-        
-        
 # call the "main" function if running this script
 if __name__ == "__main__":
     main()
