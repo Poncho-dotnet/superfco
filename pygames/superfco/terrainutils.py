@@ -78,11 +78,15 @@ def get_paredes_cercanas(level_structure, player):
 
     # first we check if player is near border/grid
     intx, inty = round(playerx), round(playery)
+
+    # ☺█  is not corner    ☺   is corner     ☺    is not corner
+    #  █                    █                ██
+
     if abs(inty - playery) < 0.05 and abs(intx - playerx) < 0.05:
         # then we check if down is empty and diagonal is blocked
-        if intx < cols and level_structure[inty+1][intx] in passable_terrain and level_structure[inty+1][intx+1] in blocked_terrain:
+        if intx < cols and level_structure[inty+1][intx] in passable_terrain and level_structure[inty][intx+1] in passable_terrain and level_structure[inty+1][intx+1] in blocked_terrain:
             result.esesquina = True
-        if intx > 0 and level_structure[inty+1][intx] in passable_terrain and level_structure[inty+1][intx-1] in blocked_terrain:
+        if intx > 0 and level_structure[inty+1][intx] in passable_terrain and level_structure[inty][intx-1] in passable_terrain  and level_structure[inty+1][intx-1] in blocked_terrain:
             result.esesquina = True
 
     return result

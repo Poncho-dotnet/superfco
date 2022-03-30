@@ -75,7 +75,7 @@ class Player(BaseEntity):
             self.posy = borde.arriba
             self.vspeed = 0
         if self.posy > borde.abajo:
-            if self.vspeed > 1.0:
+            if self.vspeed > -self.v_jump * 2:
                 self.is_dead = True
                 self.image = self.images[1]
 
