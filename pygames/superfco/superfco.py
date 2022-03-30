@@ -29,7 +29,8 @@ WATER_IMG = 'water.png'
 GOAL_IMG = 'goal.png'
 CANNONBALL_IMG = 'cannonball.png'
 CURRENT_PATH = os.getcwd()
-LEVEL_FILENAME = 'ETAPA{:02d}.PAS'
+LEVEL_FOLDER = 'levels'
+LEVEL_FILENAME = 'level{:02d}.dat'
 SCREENRECT = pygame.Rect(0, 0, 800, 600)
 FRAMERATE = 60
 
@@ -88,7 +89,7 @@ def play_level(screen, currentlvl):
     entities.Goal.containers = goals, todos
 
     # initialize our starting sprites
-    structure = terrainutils.get_level_structure(CURRENT_PATH, LEVEL_FILENAME.format(currentlvl))
+    structure = terrainutils.get_level_structure(CURRENT_PATH, LEVEL_FOLDER, LEVEL_FILENAME.format(currentlvl))
     player = draw_level(structure)
 
     # debug text

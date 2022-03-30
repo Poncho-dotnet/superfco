@@ -2,10 +2,10 @@ from enum import Enum, IntEnum
 import math
 import os
 
-def get_level_structure(currentpath: str, level_file: str) -> str:
+def get_level_structure(*argv) -> str:
     level_structure = []
 
-    with open(os.path.join(currentpath, level_file), 'r') as f:
+    with open(os.path.join(*argv), 'r') as f:
         for line in f:
             level_structure.append(get_level_row_structure(line.strip()))
 
