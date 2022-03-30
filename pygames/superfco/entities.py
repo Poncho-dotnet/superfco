@@ -27,12 +27,15 @@ class Player(BaseEntity):
     vmaxspeed = 2
     v_acceleration = 0.02
     v_jump = -7
+    water_drag = 0.2
+    air_drag = 0.05
     
     def __init__(self, posx, posy, screen, cols, rows):
         BaseEntity.__init__(self, posx, posy, screen, cols, rows)
         self.vspeed = 0.0
         self.hspeed = 0
         self.is_dead = False
+        self.has_oxygen = False
 
     def move_lat(self, direction, ticks):
         self.posx += direction * self.hmaxspeed * ticks / 1000
@@ -54,32 +57,42 @@ class Player(BaseEntity):
         self.posy += self.vspeed * ticks / 1000
         self.posx += self.hspeed * ticks / 1000
 
-    def updatepos(self, borde):
-        if self.posx < borde.izquierda:
-            self.posx = borde.izquierda
+    def dive(self, ticks):
+        self.vspeed = self.vspeed * (1-self.water_drag) * (1-ticks / 1000)
+        self.hspeed = self.hspeed * (1-self.water_drag) * (1-ticks / 1000)
+
+        # death by drowning
+        if not self.has_oxygen:
+            self.is_dead = True
+            self.image = self.images[1]
+
+    def updatepos(self, collision):
+        if self.posx < collision.izquierda:
+            self.posx = collision.izquierda
             self.hspeed = 0
 
             # if hitting wall downwards, just fall
-            if self.vspeed > 0.1:
-                self.posx -= 0.01
+            if self.vspeed > -self.v_jump / 2: 
+                self.posx += 0.01
 
-        if self.posx > borde.derecha:
-            self.posx = borde.derecha
+        if self.posx > collision.derecha:
+            self.posx = collision.derecha
             self.hspeed = 0
 
             # if hitting wall downwards, just fall
-            if self.vspeed > 0.1:
+            if self.vspeed > -self.v_jump / 2:
                 self.posx -= 0.01
 
-        if self.posy < borde.arriba:
-            self.posy = borde.arriba
+        if self.posy < collision.arriba:
+            self.posy = collision.arriba
             self.vspeed = 0
-        if self.posy > borde.abajo:
+        if self.posy > collision.abajo:
+            # death by falling too fast
             if self.vspeed > -self.v_jump * 2:
                 self.is_dead = True
                 self.image = self.images[1]
 
-            self.posy = borde.abajo
+            self.posy = collision.abajo
             self.vspeed = 0
 
         self.rect.x = self.posx * self.screenrect.width / self.cols
@@ -90,6 +103,10 @@ class Wall(BaseEntity):
         BaseEntity.__init__(self, posx, posy, screen, cols, rows)
 
 class Water(pygame.sprite.Sprite):
+    def __init__(self, posx, posy, screen, cols, rows):
+        BaseEntity.__init__(self, posx, posy, screen, cols, rows)
+
+class OxygenTank(pygame.sprite.Sprite):
     def __init__(self, posx, posy, screen, cols, rows):
         BaseEntity.__init__(self, posx, posy, screen, cols, rows)
 

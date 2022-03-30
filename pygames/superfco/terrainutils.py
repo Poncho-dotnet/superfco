@@ -1,4 +1,4 @@
-from enum import Enum, IntEnum
+from enum import IntEnum
 import math
 import os
 
@@ -26,17 +26,18 @@ def get_level_row_structure(line: str) -> str:
     return [int(char) for char in line]
 
 
-class Coordinates:
+class CollisionModel:
     def __init__(self, abajo, arriba, derecha, izquierda) -> None:
         self.abajo = abajo
         self.arriba = arriba
         self.derecha = derecha
         self.izquierda = izquierda
-        self.esesquina = False
-        self.esbordemapa = False
+        self.isterraincorner = False
+        self.ismapborder = False
+        self.iswater = False
 
     def __str__(self):
-        return f'd={self.derecha},i={self.izquierda},ab={self.abajo},ar={self.arriba},esq={self.esesquina},borde={self.esbordemapa}'
+        return f'd={self.derecha},i={self.izquierda},ab={self.abajo},ar={self.arriba},esq={self.isterraincorner},borde={self.ismapborder}'
 
 class EnumEntities(IntEnum):
     EMPTY = 1,
@@ -44,7 +45,8 @@ class EnumEntities(IntEnum):
     PLAYER = 3,
     GOAL = 4,
     WATER = 6,
-    CANNON = 7
+    CANNON = 7,
+    OXYGEN = 8
 
 # userful vars
 passable_terrain = [EnumEntities.EMPTY, EnumEntities.WATER, EnumEntities.GOAL]
@@ -56,8 +58,8 @@ def get_paredes_cercanas(level_structure, player):
     playerx, playery = player.posx, player.posy
     
     # border conditions
-    result = Coordinates(abajo=rows-1, arriba=0, derecha=cols-1, izquierda=0)
-    result.esbordemapa = True if playerx == result.izquierda or playerx == result.derecha else False
+    result = CollisionModel(abajo=rows-1, arriba=0, derecha=cols-1, izquierda=0)
+    result.ismapborder = True if playerx == result.izquierda or playerx == result.derecha else False
     
     for wally, row in enumerate(level_structure):
         for wallx, col in enumerate(row):
@@ -75,6 +77,9 @@ def get_paredes_cercanas(level_structure, player):
                 if wally+1 <= playery and abs(playerx - wallx) < 1:
                     if wally + 1 > result.arriba:
                         result.arriba = wally + 1
+            if col == EnumEntities.WATER:
+                if abs(playerx - wallx) < 1 and abs(playery - wally) < 1:
+                    result.iswater = True
 
     # first we check if player is near border/grid
     intx, inty = round(playerx), round(playery)
@@ -85,18 +90,18 @@ def get_paredes_cercanas(level_structure, player):
     if abs(inty - playery) < 0.05 and abs(intx - playerx) < 0.05:
         # then we check if down is empty and diagonal is blocked
         if intx < cols and level_structure[inty+1][intx] in passable_terrain and level_structure[inty][intx+1] in passable_terrain and level_structure[inty+1][intx+1] in blocked_terrain:
-            result.esesquina = True
+            result.isterraincorner = True
         if intx > 0 and level_structure[inty+1][intx] in passable_terrain and level_structure[inty][intx-1] in passable_terrain  and level_structure[inty+1][intx-1] in blocked_terrain:
-            result.esesquina = True
+            result.isterraincorner = True
 
     return result
 
-def is_floating(paredes: Coordinates, player):
+def is_floating(paredes: CollisionModel, player):
     playerx, playery = player.posx, player.posy
 
     if tiene_sustento(paredes, player):
         return False
-    if paredes.esesquina:
+    if paredes.isterraincorner:
         return False
 
     if playery < paredes.abajo and playery >= paredes.arriba:
@@ -104,12 +109,12 @@ def is_floating(paredes: Coordinates, player):
     else:
         return False
 
-def tiene_sustento(paredes: Coordinates, player):
+def tiene_sustento(paredes: CollisionModel, player):
     playerx, playery = player.posx, player.posy
 
     if playery == paredes.abajo:
         return True
-    elif paredes.esbordemapa:
+    elif paredes.ismapborder:
         return False
 
     if playerx == paredes.derecha:
@@ -119,10 +124,10 @@ def tiene_sustento(paredes: Coordinates, player):
 
     return False
 
-def tiene_piso(paredes: Coordinates, player):
+def tiene_piso(paredes: CollisionModel, player):
     playerx, playery = player.posx, player.posy
 
-    if paredes.esesquina:
+    if paredes.isterraincorner:
         return True
     if playery == paredes.abajo:
         return True

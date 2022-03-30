@@ -20,14 +20,17 @@ Controls
 import pygame
 import os
 import terrainutils
-import entities
+from terrainutils import EnumEntities
+from entities import Player, Wall, Water, Goal, OxygenTank, Text
 
 # game constants
 PLAYER_IMG = 'player.png'
 WALL_IMG = 'wall.png'
 WATER_IMG = 'water.png'
 GOAL_IMG = 'goal.png'
+OXYGENTANK_IMG = 'oxygentank.png'
 CANNONBALL_IMG = 'cannonball.png'
+IMAGES_FOLDER = 'images'
 CURRENT_PATH = os.getcwd()
 LEVEL_FOLDER = 'levels'
 LEVEL_FILENAME = 'level{:02d}.dat'
@@ -35,11 +38,11 @@ SCREENRECT = pygame.Rect(0, 0, 800, 600)
 FRAMERATE = 60
 
 COLUMNS = 80
-ROWS = 22
+ROWS = 23
 
 # loads an image, prepares it for play
 def load_image(file):
-    file = os.path.join(CURRENT_PATH, file)
+    file = os.path.join(CURRENT_PATH, IMAGES_FOLDER, file)
 
     try:
         surface = pygame.image.load(file)
@@ -55,14 +58,16 @@ def load_image(file):
 def draw_level(structure):
     for idxrow, row in enumerate(structure):
         for idxcol, col in enumerate(row):
-            if col == 2:
-                entities.Wall(idxcol, idxrow, SCREENRECT, COLUMNS, ROWS)
-            if col == 3:
-                player = entities.Player(idxcol, idxrow, SCREENRECT, COLUMNS, ROWS)
-            if col == 4:
-                entities.Goal(idxcol, idxrow, SCREENRECT, COLUMNS, ROWS)
-            if col == 6:
-                entities.Water(idxcol, idxrow, SCREENRECT, COLUMNS, ROWS)
+            if col == EnumEntities.WALL:
+                Wall(idxcol, idxrow, SCREENRECT, COLUMNS, ROWS)
+            if col == EnumEntities.PLAYER:
+                player = Player(idxcol, idxrow, SCREENRECT, COLUMNS, ROWS)
+            if col == EnumEntities.GOAL:
+                Goal(idxcol, idxrow, SCREENRECT, COLUMNS, ROWS)
+            if col == EnumEntities.WATER:
+                Water(idxcol, idxrow, SCREENRECT, COLUMNS, ROWS)
+            if col == EnumEntities.OXYGEN:
+                OxygenTank(idxcol, idxrow, SCREENRECT, COLUMNS, ROWS)
 
     return player 
 
@@ -76,25 +81,26 @@ def play_level(screen, currentlvl, lives):
     # Initialize Game Groups
     walls = pygame.sprite.Group()
     water = pygame.sprite.Group()
-    cannons = pygame.sprite.Group()
+    oxygen = pygame.sprite.Group()
     goals = pygame.sprite.Group()
     messages = pygame.sprite.Group()
     todos = pygame.sprite.RenderUpdates()
 
     # assign default groups to each sprite class
-    entities.Player.containers = todos
-    entities.Wall.containers = walls, todos
-    entities.Water.containers = water, todos
-    entities.Text.containers = messages, todos
-    entities.Goal.containers = goals, todos
+    Player.containers = todos
+    Wall.containers = walls, todos
+    Water.containers = water, todos
+    OxygenTank.containers = oxygen, todos
+    Goal.containers = goals, todos
+    Text.containers = messages, todos
 
     # initialize our starting sprites
     structure = terrainutils.get_level_structure(CURRENT_PATH, LEVEL_FOLDER, LEVEL_FILENAME.format(currentlvl))
     player = draw_level(structure)
 
     # debug text
-    debugtext = entities.Text("Starting...", 10, (200,200,200), 500, 50, [0,0])
-    livestext = entities.Text(f"LIVES = {lives}", 20, (100,200,100), 100, 50, (SCREENRECT.width - 100,0))
+    debugtext = Text("Starting...", 10, (200,200,200), 500, 20, [0,0])
+    livestext = Text(f"LEVEL {currentlvl}, LIVES = {lives}", 20, (100,200,100), 200, 25, (SCREENRECT.width - 200,0))
 
     # setup clock
     clock = pygame.time.Clock()
@@ -119,21 +125,29 @@ def play_level(screen, currentlvl, lives):
         paredescercanas = terrainutils.get_paredes_cercanas(structure, player)
         tienesustento = terrainutils.tiene_sustento(paredescercanas, player)
         tienepiso = terrainutils.tiene_piso(paredescercanas, player) or tienesustento
+        isfloating = terrainutils.is_floating(paredescercanas, player)    
+        isdiving = paredescercanas.iswater
 
         if tienesustento:
             player.hspeed=0
             player.vspeed=0
 
-        if keys[pygame.K_KP6] and tienepiso:
-            player.move_lat(1, ticks)
-        if keys[pygame.K_KP4] and tienepiso: 
-            player.move_lat(-1, ticks)
+        if keys[pygame.K_KP6]:
+            if isdiving:
+                player.move_lat(0.5, ticks)
+            elif tienepiso:
+                player.move_lat(1, ticks)
+        if keys[pygame.K_KP4]: 
+            if isdiving:
+                player.move_lat(-0.5, ticks)
+            elif tienepiso:
+                player.move_lat(-1, ticks)
         
         if keys[pygame.K_KP8]:
             if paredescercanas.abajo == player.posy:
                 player.jump(ticks)
                 player.hspeed = 0   
-            elif tienesustento:
+            elif tienesustento or isdiving:
                 player.move_vert(-1, ticks)             
         if keys[pygame.K_KP2] and tienesustento:
             player.move_vert(1, ticks)
@@ -143,10 +157,17 @@ def play_level(screen, currentlvl, lives):
         if keys[pygame.K_KP7] and tienepiso and player.posx > paredescercanas.izquierda:
             player.jump_lat(-1, ticks)
 
-        # si está en el aire....
-        isfloating = terrainutils.is_floating(paredescercanas, player)
-        if isfloating == True:
+        # grabbing oxygen tank
+        if pygame.sprite.spritecollide(player, oxygen, 1):
+            player.has_oxygen = True
+
+        # if the player is in the air        
+        if isfloating:
             player.fall(ticks)
+
+        # if player is diving in the water
+        if isdiving:
+            player.dive(ticks)
 
         # update
         player.updatepos(paredescercanas)        
@@ -160,7 +181,7 @@ def play_level(screen, currentlvl, lives):
         pygame.event.pump()
 
         # detect end of level
-        for goal in pygame.sprite.spritecollide(player, goals, 0):
+        if pygame.sprite.spritecollide(player, goals, 0):
             return "goal"
 
         # detect dead
@@ -189,22 +210,27 @@ def main():
     wall_img = load_image(WALL_IMG)
     wall_img = pygame.transform.scale(wall_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
     wall_img.set_colorkey((0,0,0))
-    entities.Wall.images = [wall_img]
+    Wall.images = [wall_img]
 
     water_img = load_image(WATER_IMG)
     water_img = pygame.transform.scale(water_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
     water_img.set_colorkey((0,0,0))
-    entities.Water.images = [water_img]
+    Water.images = [water_img]
+
+    oxygen_img = load_image(OXYGENTANK_IMG)
+    oxygen_img = pygame.transform.scale(oxygen_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
+    oxygen_img.set_colorkey((0,0,0))
+    OxygenTank.images = [oxygen_img]
 
     goal_img = load_image(GOAL_IMG)
     goal_img = pygame.transform.scale(goal_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
     goal_img.set_colorkey((0,0,0))
-    entities.Goal.images = [goal_img]
+    Goal.images = [goal_img]
 
     player_img = load_image(PLAYER_IMG)
     player_img = pygame.transform.scale(player_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
     player_img.set_colorkey((0,0,0))
-    entities.Player.images = [player_img, pygame.transform.scale(player_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS / 2))]
+    Player.images = [player_img, pygame.transform.scale(player_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS / 2))]
 
     # global vars
     currentlvl = 3
