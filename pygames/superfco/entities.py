@@ -32,6 +32,7 @@ class Player(BaseEntity):
         BaseEntity.__init__(self, posx, posy, screen, cols, rows)
         self.vspeed = 0.0
         self.hspeed = 0
+        self.is_dead = False
 
     def move_lat(self, direction, ticks):
         self.posx += direction * self.hmaxspeed * ticks / 1000
@@ -69,11 +70,15 @@ class Player(BaseEntity):
             # if hitting wall downwards, just fall
             if self.vspeed > 0.1:
                 self.posx -= 0.01
-                
+
         if self.posy < borde.arriba:
             self.posy = borde.arriba
             self.vspeed = 0
         if self.posy > borde.abajo:
+            if self.vspeed > 1.0:
+                self.is_dead = True
+                self.image = self.images[1]
+
             self.posy = borde.abajo
             self.vspeed = 0
 
@@ -93,19 +98,22 @@ class Goal(pygame.sprite.Sprite):
         BaseEntity.__init__(self, posx, posy, screen, cols, rows)
 
 class Text(pygame.sprite.Sprite):
-    def __init__(self, text, size, color, width, height):
+    def __init__(self, text, size, color, width, height, position):
         pygame.sprite.Sprite.__init__(self, self.containers)
         self.color = color
         self.width = width
         self.height = height
+        self.position = position
 
         self.font = pygame.font.SysFont("Comic Sans MS", size)
         self.surface = self.font.render(text, 1, self.color)
         self.image = pygame.Surface((self.width, self.height))
-        self.image.blit(self.surface, [0, 0])
+        self.image.blit(self.surface, [0,0])
+        
         self.rect = self.image.get_rect()
+        self.rect.topleft = position
     
     def set_text(self, text):
         self.surface = self.font.render(text, 1, self.color)
         self.image = pygame.Surface((self.width, self.height))
-        self.image.blit(self.surface, [0, 0])
+        self.image.blit(self.surface, [0,0])

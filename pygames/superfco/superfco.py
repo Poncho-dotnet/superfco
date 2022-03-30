@@ -67,7 +67,7 @@ def draw_level(structure):
     return player 
 
 
-def play_level(screen, currentlvl):
+def play_level(screen, currentlvl, lives):
     # create the background
     background = pygame.Surface(SCREENRECT.size)
     background.fill(color = (0, 0, 0))
@@ -93,7 +93,8 @@ def play_level(screen, currentlvl):
     player = draw_level(structure)
 
     # debug text
-    debugtext = entities.Text("Starting...", 10, (200,200,200), 500, 50)
+    debugtext = entities.Text("Starting...", 10, (200,200,200), 500, 50, [0,0])
+    livestext = entities.Text(f"LIVES = {lives}", 20, (100,200,100), 100, 50, (SCREENRECT.width - 100,0))
 
     # setup clock
     clock = pygame.time.Clock()
@@ -162,6 +163,11 @@ def play_level(screen, currentlvl):
         for goal in pygame.sprite.spritecollide(player, goals, 0):
             return "goal"
 
+        # detect dead
+        if player.is_dead:
+            pygame.time.delay(1000)
+            return "dead"
+
         # cap the framerate
         ticks = clock.tick(FRAMERATE)
 
@@ -198,21 +204,24 @@ def main():
     player_img = load_image(PLAYER_IMG)
     player_img = pygame.transform.scale(player_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
     player_img.set_colorkey((0,0,0))
-    entities.Player.images = [player_img]
+    entities.Player.images = [player_img, pygame.transform.scale(player_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS / 2))]
 
     # global vars
     currentlvl = 3
+    lives = 3
     
     # starto!
     while True:
         screen.fill( color = (0,0,0))
         pygame.display.update()
 
-        result = play_level(screen, currentlvl)
+        result = play_level(screen, currentlvl, lives)
 
-        if (result == "goal"):
+        if result == "goal":
             currentlvl += 1
-        if (result == "quit"):
+        if result == "dead":
+            lives -= 1
+        if result == "quit":
             return
 
 
