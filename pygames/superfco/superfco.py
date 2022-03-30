@@ -128,29 +128,29 @@ def play_level(screen, currentlvl, lives):
             player.hspeed=0
             player.vspeed=0
 
-        if keys[pygame.K_KP6]:
+        if keys[pygame.K_KP6] or keys[pygame.K_d]:
             if isdiving:
                 player.move_lat(0.5, ticks)
             elif tienepiso:
                 player.move_lat(1, ticks)
-        if keys[pygame.K_KP4]: 
+        if keys[pygame.K_KP4] or keys[pygame.K_a]: 
             if isdiving:
                 player.move_lat(-0.5, ticks)
             elif tienepiso:
                 player.move_lat(-1, ticks)
         
-        if keys[pygame.K_KP8]:
+        if keys[pygame.K_KP8] or keys[pygame.K_w]:
             if paredescercanas.abajo == player.posy:
                 player.jump(ticks)
                 player.hspeed = 0   
             elif tienesustento or isdiving:
                 player.move_vert(-1, ticks)             
-        if keys[pygame.K_KP2] and tienesustento:
+        if (keys[pygame.K_KP2] or keys[pygame.K_s]) and tienesustento:
             player.move_vert(1, ticks)
 
-        if keys[pygame.K_KP9] and tienepiso and player.posx < paredescercanas.derecha:
+        if (keys[pygame.K_KP9] or keys[pygame.K_e]) and tienepiso and player.posx < paredescercanas.derecha:
             player.jump_lat(1, ticks)
-        if keys[pygame.K_KP7] and tienepiso and player.posx > paredescercanas.izquierda:
+        if (keys[pygame.K_KP7] or keys[pygame.K_q]) and tienepiso and player.posx > paredescercanas.izquierda:
             player.jump_lat(-1, ticks)
 
         # grabbing oxygen tank
@@ -250,7 +250,7 @@ def main():
     Goal.images = [goal_img]
 
     player_img = load_image(PLAYER_IMG)
-    Player.images = [player_img, pygame.transform.scale(player_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS / 2))]
+    Player.images = [player_img, pygame.transform.scale(player_img, (round(SCREENRECT.width / COLUMNS), round(SCREENRECT.height / ROWS / 2)))]
 
     # global vars
     currentlvl = 1
