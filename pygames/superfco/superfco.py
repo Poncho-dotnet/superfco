@@ -41,17 +41,6 @@ FRAMERATE = 60
 COLUMNS = 80
 ROWS = 23
 
-# loads an image, prepares it for play
-def load_image(file):
-    file = os.path.join(CURRENT_PATH, IMAGES_FOLDER, file)
-
-    try:
-        surface = pygame.image.load(file)
-    except pygame.error:
-        raise SystemExit('Could not load image "%s" %s' % (file, pygame.get_error()))
-    return surface.convert()
-
-
 # ======================================================
 #                      Level play
 # ======================================================
@@ -217,6 +206,20 @@ def play_level(screen, currentlvl, lives):
 #                         Main
 # ======================================================
 
+# loads an image, prepares it for play
+def load_image(file):
+    file = os.path.join(CURRENT_PATH, IMAGES_FOLDER, file)
+
+    try:
+        surface = pygame.image.load(file)
+    except pygame.error:
+        raise SystemExit('Could not load image "%s" %s' % (file, pygame.get_error()))
+
+    result = surface.convert()
+    result = pygame.transform.scale(result, (round(SCREENRECT.width / COLUMNS), round(SCREENRECT.height / ROWS)))
+    result.set_colorkey((0,0,0))
+    return result
+
 def main():
     # init screen
     pygame.init()
@@ -229,38 +232,24 @@ def main():
     # Load images, assign to sprite classes
     # (do this before the classes are used, after screen setup)
     wall_img = load_image(WALL_IMG)
-    wall_img = pygame.transform.scale(wall_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
-    wall_img.set_colorkey((0,0,0))
     Wall.images = [wall_img]
 
     water_img = load_image(WATER_IMG)
-    water_img = pygame.transform.scale(water_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
-    water_img.set_colorkey((0,0,0))
     Water.images = [water_img]
 
     oxygen_img = load_image(OXYGENTANK_IMG)
-    oxygen_img = pygame.transform.scale(oxygen_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
-    oxygen_img.set_colorkey((0,0,0))
     OxygenTank.images = [oxygen_img]
 
     cannon_img = load_image(CANNON_IMG)
-    cannon_img = pygame.transform.scale(cannon_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
-    cannon_img.set_colorkey((0,0,0))
     Cannon.images = [cannon_img]
 
     cannonball_img = load_image(CANNONBALL_IMG)
-    cannonball_img = pygame.transform.scale(cannonball_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
-    cannonball_img.set_colorkey((0,0,0))
     CannonBall.images = [cannonball_img]
 
     goal_img = load_image(GOAL_IMG)
-    goal_img = pygame.transform.scale(goal_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
-    goal_img.set_colorkey((0,0,0))
     Goal.images = [goal_img]
 
     player_img = load_image(PLAYER_IMG)
-    player_img = pygame.transform.scale(player_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS))
-    player_img.set_colorkey((0,0,0))
     Player.images = [player_img, pygame.transform.scale(player_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS / 2))]
 
     # global vars
