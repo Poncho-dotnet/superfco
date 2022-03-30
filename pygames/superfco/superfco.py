@@ -264,7 +264,7 @@ def main():
     Player.images = [player_img, pygame.transform.scale(player_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS / 2))]
 
     # global vars
-    currentlvl = 6
+    currentlvl = 1
     lives = 5
     
     # starto!
