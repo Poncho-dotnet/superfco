@@ -233,11 +233,11 @@ def main():
     Player.images = [player_img, pygame.transform.scale(player_img, (SCREENRECT.width / COLUMNS, SCREENRECT.height / ROWS / 2))]
 
     # global vars
-    currentlvl = 3
-    lives = 3
+    currentlvl = 4
+    lives = 5
     
     # starto!
-    while True:
+    while lives > 0:
         screen.fill( color = (0,0,0))
         pygame.display.update()
 
@@ -249,6 +249,10 @@ def main():
             lives -= 1
         if result == "quit":
             return
+
+    if lives == 0:
+        # come back to start screen
+        pass
 
 
 # call the "main" function if running this script
